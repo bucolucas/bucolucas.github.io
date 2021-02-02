@@ -1,0 +1,260 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>Some app</title>
+  
+<!-- 
+  <link rel="stylesheet" href="css/styles.css?v=1.0"> -->
+<style>
+@import 'https://fonts.googleapis.com/css?family=Open+Sans';
+
+* {
+	-webkit-box-sizing: border-box;
+	box-sizing: border-box;
+}
+
+body {
+	font-family: 'Open Sans', sans-serif;
+	line-height: 1.75em;
+	font-size: 16px;
+	background-color: #222;
+	color: #aaa;
+}
+
+.simple-container {
+	max-width: 675px;
+	margin: 0 auto;
+	padding-top: 70px;
+	padding-bottom: 20px;
+}
+
+.simple-print {
+	fill: white;
+	stroke: white;
+}
+.simple-print svg {
+	height: 100%;
+}
+
+.simple-close {
+	color: white;
+	border-color: white;
+}
+
+.simple-ext-info {
+	border-top: 1px solid #aaa;
+}
+
+p {
+	font-size: 16px;
+}
+
+h1 {
+	font-size: 30px;
+	line-height: 34px;
+}
+
+h2 {
+	font-size: 20px;
+	line-height: 25px;
+}
+
+h3 {
+	font-size: 16px;
+	line-height: 27px;
+	padding-top: 15px;
+	padding-bottom: 15px;
+	border-bottom: 1px solid #D8D8D8;
+	border-top: 1px solid #D8D8D8;
+}
+
+hr {
+	height: 1px;
+	background-color: #d8d8d8;
+	border: none;
+	width: 100%;
+	margin: 0px;
+}
+
+a[href] {
+	color: #1e8ad6;
+}
+
+a[href]:hover {
+	color: #3ba0e6;
+}
+
+img {
+	max-width: 100%;
+}
+
+li {
+	line-height: 1.5em;
+}
+
+aside,
+[class *= "sidebar"],
+[id *= "sidebar"] {
+	max-width: 90%;
+	margin: 0 auto;
+	border: 1px solid lightgrey;
+	padding: 5px 15px;
+}
+
+@media (min-width: 1921px) {
+	body {
+		font-size: 18px;
+	}
+}
+</style>
+
+</head>
+
+<body>
+  <div id="pleaseWait">Please Wait...</div>
+  <div id="counting" style="display:none">
+  <span id="coinSpan">Coin Value</span>
+  <br>
+  <span id="dollarSpan">$</span>
+  <br>
+  <span id="mvpSpan">Most valuable Post: </span> <a id="mvpLink" href="#">MVP</a>
+  <br>
+  <span id="postsCounted">Posts Counted: 0</span>
+  <br>
+  <ul id="postList">
+  </ul>
+  </div>
+  <script type="text/javascript">
+    var wsbUrl = "https://www.reddit.com/r/wallstreetbets/top/";
+    var yoloUrls = ["https://www.reddit.com/r/wallstreetbets/comments/lawubt/hey_everyone_its_mark_cuban_jumping_on_to_do_an/"];
+    var totalCoinCount = 0;
+    var postsCounted = 0;
+    var highestCoinCount = 0;
+    function getAllAwardings(url, title){
+        fetch(url + ".json")
+        .then(response => response.text())
+        .then((data) => {
+          document.getElementById("pleaseWait").setAttribute("style", "display:none");
+          document.getElementById("counting").setAttribute("style", "");
+          var mainObj = JSON.parse(data);
+          var flattenedObject = flattenObject(mainObj);
+          var result =  [];
+          for (var i in flattenedObject){
+            result.push([i, flattenedObject[i]]);
+          }
+          var awards = result.filter(kvp => kvp[0].includes("awardings") && (kvp[0].endsWith(".count") || kvp[0].endsWith(".coin_price")));
+          var currentCoinAmount = 0;
+          for (var i = 0; i < awards.length; i += 2)
+          {
+            var coinPrice = awards[i][1];
+            var count = awards[i+1][1];
+
+            var beginningOfCoinPriceString = awards[i][0].substring(0, awards[i][0].indexOf(".coin_price"));
+            var beginningOfCountString = awards[i+1][0].substring(0, awards[i+1][0].indexOf(".count"));
+            if (beginningOfCoinPriceString === beginningOfCountString){
+              currentCoinAmount += coinPrice * count;
+            }
+            else{
+              alert("something is wrong");
+            }
+          }
+          //alert(totalCoinCount * .002439);
+          totalCoinCount += currentCoinAmount;
+          postsCounted += 1;
+          if (currentCoinAmount > highestCoinCount){
+            document.getElementById("mvpSpan").textContent = "Most Valuable Post: " + currentCoinAmount + " coins, $" +  Math.trunc(currentCoinAmount * .002439); 
+            document.getElementById("mvpLink").setAttribute("href", url);
+            document.getElementById("mvpLink").textContent = title;
+            highestCoinCount = currentCoinAmount;
+          }
+          var link = document.createElement("a");
+          link.setAttribute("href", url);
+          link.appendChild(document.createTextNode(title));
+          var entry = document.createElement("li");
+          entry.appendChild(link);
+
+          document.getElementById("postList").appendChild(entry);
+          entry.setAttribute("data-coinAmount", currentCoinAmount);
+          entry.appendChild(document.createTextNode(" " + currentCoinAmount + " coins, $" + Math.trunc(currentCoinAmount * .002439)));
+
+          document.getElementById("coinSpan").textContent = "Coin Value " + totalCoinCount;
+          document.getElementById("dollarSpan").textContent = "$" +  Math.trunc(totalCoinCount * .002439);
+          document.getElementById("postsCounted").textContent = "Posts Counted: " + postsCounted;
+          if (postsCounted === 100){
+            sortList();
+          }
+      });
+    }
+    
+    function getPostUrls(subredditUrl){
+      fetch(subredditUrl)
+        .then(response => response.text())
+        .then((data) => {
+          var mainObj = JSON.parse(data);
+          var allChildren = mainObj.data.children;
+          for (var i = 0; i < allChildren.length; i++)
+          {
+            getAllAwardings("https://www.reddit.com" + allChildren[i].data.permalink, allChildren[i].data.title)
+          }
+      });
+    }
+
+    var flattenObject = function(ob) {
+
+      var toReturn = {};
+      
+      for (var i in ob) {
+        if (!ob.hasOwnProperty(i)) continue;
+        
+        if ((typeof ob[i]) == 'object') {
+          var flatObject = flattenObject(ob[i]);
+          for (var x in flatObject) {
+            if (!flatObject.hasOwnProperty(x)) continue;
+            
+            toReturn[i + '.' + x] = flatObject[x];
+          }
+        } else {
+          toReturn[i] = ob[i];
+        }
+      }
+      return toReturn;
+    };    
+
+    getPostUrls(wsbUrl + ".json?limit=100");
+
+  function sortList() {
+  var list, i, switching, b, shouldSwitch;
+  list = document.getElementById("postList");
+  switching = true;
+  /* Make a loop that will continue until
+  no switching has been done: */
+  while (switching) {
+    // Start by saying: no switching is done:
+    switching = false;
+    b = list.getElementsByTagName("LI");
+    // Loop through all list items:
+    for (i = 0; i < (b.length - 1); i++) {
+      // Start by saying there should be no switching:
+      shouldSwitch = false;
+      /* Check if the next item should
+      switch place with the current item: */
+      if (parseFloat(b[i].getAttribute("data-coinAmount")) < parseFloat(b[i + 1].getAttribute("data-coinAmount"))) {
+        shouldSwitch = true;
+        break;
+      }
+    }
+    if (shouldSwitch) {
+      /* If a switch has been marked, make the switch
+      and mark the switch as done: */
+      b[i].parentNode.insertBefore(b[i + 1], b[i]);
+      switching = true;
+    }
+  }
+}
+
+  </script>
+</body>
+</html>
