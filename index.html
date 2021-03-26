@@ -125,7 +125,10 @@ aside,
   </ul>
   </div>
   <script type="text/javascript">
-    var wsbUrl = "https://www.reddit.com/r/wallstreetbets/top/";
+    let url = new URL(window.location);
+    let searchParams = new URLSearchParams(url.search);
+    var subredditName = searchParams.get("subreddit");
+    var wsbUrl = "https://www.reddit.com/r/" + subredditName + "/top/";
     var yoloUrls = [];
     var totalCoinCount = 0;
     var postsCounted = 0;
